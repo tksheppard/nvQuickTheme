@@ -244,10 +244,6 @@ nav ul {
         flex-direction:column;
         position:relative;
         
-        &.has-submenu a {
-          padding-right:64px;
-        }
-
         + li {
           margin:0;
         }
@@ -255,13 +251,17 @@ nav ul {
 
       a {
         color:white;
-        padding:10px 20px 10px 20px;
+        padding:10px 64px 10px 20px;
         flex-grow:1;
         white-space:nowrap;
         text-align:left;
         background-color:transparent;
         border:none;
-        border-radius:0 !important;
+        border-radius:0;
+
+        &:hover, &:focus {
+          background-color:$primary-color !important;
+        }
         
         &.btn.single {
           &:after {
@@ -274,54 +274,36 @@ nav ul {
       }
 
       > li {
-        /* Top Level */
-        a {
-          &:hover, &:focus {
-            background-color:$primary-color !important;
-          }
-        }
-
-        /* Under 1 */
+        /* Under 2 */
         ul {
-          background:$primary-color;
-          position:relative !important;
+          background:$tertiary-color;
+          position:relative;
           display:none;
-          width:100% !important;
-          border-radius:0 !important;
-          left:0 !important;
+          width:100%;
+          border-radius:0;
           
-          .sub-toggle {
-            background-color:$primary-color;
-
-            &:hover, &:focus {
-              background-color:$secondary-color !important;
-            }
-
-            &.expanded {
-              background-color:$secondary-color !important;
-              ~ ul {
-                height:auto;
-              }
-            }
-          }
-
           > li {
-
             a {
-              &:hover, &:focus {
-                background-color:$secondary-color !important;
-              }
+              padding-left:30px;
             }
-
-            /* Under 2 */
+            /* Under 3 */
             ul {
-              background:$secondary-color;
-
+              position:relative;
+              left:auto;
+              
               > li {
-
                 a {
-                  &:hover, &:focus {
-                    background-color:$tertiary-color !important;
+                  padding-left:40px;
+                }
+                /* Under 4 */
+                ul {
+                  position:relative;
+                  left:auto;
+
+                  > li {
+                    a {
+                      padding-left:50px;
+                    }
                   }
                 }
               }
