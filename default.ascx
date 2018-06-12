@@ -29,8 +29,8 @@
 
   <div class="container-fluid bg-tertiary">
     <div class="container">
-      <div class="row align-items-center">
-        <div id="FullWidthBGDoublePaneOne" class="col-md-6 cpy-5" runat="server"></div>
+      <div class="row align-items-center py-5">
+        <div id="FullWidthBGDoublePaneOne" class="col-md-6" runat="server"></div>
         <div id="FullWidthBGDoublePaneTwo" class="col-md-6" runat="server"></div>
       </div>
     </div>
