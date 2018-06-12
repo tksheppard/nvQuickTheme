@@ -1,6 +1,5 @@
 {
 	"node": "node_modules",
-	"assets": "assets",
 	"src": "src",
 	"dist": "dist",
 	"temp": "temp",

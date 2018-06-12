@@ -21,7 +21,6 @@ var gulp          = require('gulp'),
     description   = details.description,
     config        = require('./pathing.json'),
     node          = ( config.node.length )? config.node+'/' : '',
-    assets        = ( config.assets.length )? config.assets+'/' : '',
     src           = ( config.src.length )? config.src+'/' : '',
     dist          = ( config.dist.length )? config.dist+'/' : '',
     temp          = ( config.temp.length )? config.temp+'/' : '',
@@ -61,17 +60,6 @@ gulp.task('scss', function() {
 		.pipe(gulp.dest( './'+dist+'/css/'))
 		.pipe(notify({message: 'Styles compiled successfully!', title : 'sass', sound: false}));
 });
-
-// Development Bootstrap creation.
-// Checks for errors and concats. Minifies. All Bootstrap CSS
-gulp.task('bscss', function() {
-  return gulp.src('./'+src+assets+'bootstrap/scss/**/*.scss')
-    .pipe(sass({outputStyle: 'compressed'}).on('error', sass.logError))
-    .pipe(rename({suffix: '.min'}))
-    .pipe(autoprefixer({browsers: ['last 2 versions', 'ie >= 9', '> 1%']}))
-		.pipe(gulp.dest( './'+dist+'css/'))
-		.pipe(notify({message: 'Styles compiled successfully!', title : 'bootstrap', sound: false}));
-})
 
 
 
@@ -114,41 +102,11 @@ gulp.task('js', function() {
 *	DNN TASKS
 ------------------------------------------------------*/
 
+// Copies containers over to the actual containers folder required by DNN.
 gulp.task('containers', function() {
   gulp.src('./containers/*')
     .pipe(gulp.dest('../../Containers/'+project+'/'))
     .pipe(notify({message: 'Containers updated!', title : 'containers', sound: false}));
-});
-
-
-
-/*
-*	SETUP TASKS
-------------------------------------------------------*/
-
-// Pulls from packages and distributes where necessary.
-// Add/modify as needed.
-gulp.task('init', function() {
-
-	// This copies the normalize css file over to the scss components folder.
-	// This will overwrite any changes you've made to normalize.css.
-	gulp.src( './'+node+'/normalize.css/normalize.css' )
-		.pipe(rename("_normalize.scss"))
-		.pipe(gulp.dest( './'+src+"scss/components/"));
-  
-  // Copies over bootstrap scss and js to dist.
-  // This will overwrite any changes you've made to bootstrap's scss
-	gulp.src( './'+node+'/bootstrap/scss/**/*', {base: './'+node})
-		.pipe(gulp.dest( './'+src+assets));
-  gulp.src( './'+node+'/bootstrap/dist/js/bootstrap.bundle.min.js')
-		.pipe(gulp.dest( './'+dist+"/js/"));
-  
-  // Copies over font-awesome assets to dist.
-  gulp.src( './'+node+'/font-awesome/fonts/*')
-		.pipe(gulp.dest( './'+dist+"/fonts/"));
-  gulp.src( './'+node+'/font-awesome/css/font-awesome.min.css')
-		.pipe(gulp.dest( './'+dist+"/css/"));
-    
 });
 
 // Takes the information provided at the top of this file and populates it into the manifest.dnn file.
@@ -226,14 +184,13 @@ gulp.task('cleanup', function() {
 // gulp watch
 gulp.task('watch', function () {
     gulp.watch( src+"scss/**/*.scss", ['scss'])
-    gulp.watch( src+assets+"bootstrap/scss/**/*.scss", ['bscss'])
     gulp.watch([ src+"js/**/*.js"], ['js'])
     gulp.watch( './containers/*', ['containers'])
     gulp.watch( './project-details.json', ['manifest'])
 });
 
 // gulp build
-gulp.task('build', ['scss', 'bscss', 'js', 'images', 'containers', 'manifest']);
+gulp.task('build', ['scss', 'js', 'images', 'containers', 'manifest']);
 
 // gulp package
 gulp.task('package', sequence('build', 'buildzips', 'zipfiles', 'cleanup'));
