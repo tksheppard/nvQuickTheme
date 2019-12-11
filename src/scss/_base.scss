@@ -10,41 +10,51 @@
 //–––––––––––––––––––––––––––––––––––––––––––––––––
 
 body {
-  font-size: 16px;
-  font-weight: 200;
-  line-height: 1.5;
-  font-family: $open-sans;
-  color: $font-color;
-  background-color: #fff;
+  @include font-size(18);
+  font-family:$fs-main;
+  font-weight:200;
+  line-height:$base-line-height;
+  color:$font-color;
+  background-color:#fff;
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4, h5 {
-	font-family: $open-sans;
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+	font-family: $fs-header;
 }
 
-h1 {
-  @include font-baseline(48, 52);
+h1, .h1 {
+  @include font-baseline(68, 72);
+  margin-bottom: $base-line-height * 2 + rem;
 }
 
-h2 {
-  @include font-baseline(38, 48);
+h2, .h2 {
+  @include font-baseline(42, 48);
+  margin-bottom: $base-line-height + rem;
 }
 
-h3 {
-  @include font-baseline(26, 36);
+h3, .h3 {
+  @include font-baseline(32, 48);
+  margin-bottom: 0;
 }
 
-h4 {
-  @include font-baseline(22, 28);
+h4, .h4 {
+  @include font-baseline(24, 36);
+  margin-bottom: 0;
 }
 
-h5 {
-  @include font-baseline(18, 24);
+h5, .h5 {
+  @include font-baseline(18, 27);
+  margin-bottom: 0;
+}
+
+h6, .h6 {
+  @include font-baseline(16, 24);
+  margin-bottom: 0;
 }
 
 p {
-  margin: 0 0 1.5rem;
+  margin-bottom:$base-line-height + rem;
 }
 
 ul,
@@ -102,11 +112,11 @@ a {
   }
 }
 header a, footer a {
-	color: $primary-color;
+	color: $main-shade;
 	font-weight:600;
 	
 	&:hover {
-    	color: lighten($primary-color, 20%);
+    	color: lighten($main-shade, 20%);
   	}
 }
 
@@ -127,6 +137,6 @@ hr {
 }
 
 pre {
-  background:$light-grey;
+  background:$light-shade;
   padding:10px 15px;
 }
