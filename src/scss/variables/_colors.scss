@@ -1,12 +1,50 @@
-// Colors
-$light-grey: #e6e6e6 !default;
-$grey:#7d7d7d !default;
-$dark-grey: #333333 !default;
+// Color Schemes
+$cs-default: (
+    "light-accent":#7d7d7d,
+    "light-shade":#e6e6e6,
+    "main-accent":#00a5e1,
+    "main-shade":#ec3d46,
+    "dark-accent":#333333,
+    "dark-shade":#462a2b
+);
 
-$primary-color: rgb(236, 61, 70) !default;
-$secondary-color: rgb(0, 165, 225) !default;
-$tertiary-color: rgb(70, 42, 43) !default;
+// Choose Color Scheme
+$cs-current: $cs-default;
 
-$border-color: #bbb !default;
-$link-color: $primary-color !default;
-$font-color: #4a4a4a !default;
+// Color Builder - Don't Edit
+$light-accent:map-get($cs-current, 'light-accent');
+$light-shade:map-get($cs-current, 'light-shade');
+$main-accent:map-get($cs-current, 'main-accent');
+$main-shade:map-get($cs-current, 'main-shade');
+$dark-accent:map-get($cs-current, 'dark-accent');
+$dark-shade:map-get($cs-current, 'dark-shade');
+
+$colors: (
+    "light-accent":$light-accent,
+    "light-shade":$light-shade,
+    "main-accent":$main-accent,
+    "main-shade":$main-shade,
+    "dark-accent":$dark-accent,
+    "dark-shade":$dark-shade,
+);
+
+$grayscale: (
+    "white":$white,
+    "gray-100":$gray-100,
+    "gray-200":$gray-200,
+    "gray-300":$gray-300,
+    "gray-400":$gray-400,
+    "gray-500":$gray-500,
+    "gray-600":$gray-600,
+    "gray-700":$gray-700,
+    "gray-800":$gray-800,
+    "gray-900":$gray-900,
+    "black":$black
+);
+
+// Text Colors
+$link-color: $main-shade;
+$font-color: $dark-accent;
+
+// Element Colors
+$border-color: $dark-accent;
