@@ -65,9 +65,9 @@ ol ul {
 ### /variables/
 Most scss variables should be located here. Any widely used variables created should be added here. Ex:
 ```scss
-$primary-color: rgb(236, 61, 70) !default;
-$secondary-color: rgb(0, 165, 225) !default;
-$tertiary-color: rgb(70, 42, 43) !default;
+$main-shade: rgb(236, 61, 70) !default;
+$main-accent: rgb(0, 165, 225) !default;
+$dark-shade: rgb(70, 42, 43) !default;
 ```
 
 ### /mixins/_mixins.scss
@@ -90,8 +90,8 @@ This is where any page/template specific styling should be done.
 Any section specific styling should be here. Ex: `_bannerpane.scss` was created here because it was possible this section would be reused on multiple templates.
 ```scss
 .bannerpane {
-  background:$secondary-color;
-  background:linear-gradient(135deg, darken($secondary-color, 20%) 0%, $secondary-color 50%, lighten($secondary-color, 20%) 100%);
+  background:$main-accent;
+  background:linear-gradient(135deg, darken($main-accent, 20%) 0%, $main-accent 50%, lighten($main-accent, 20%) 100%);
   color:white;
   
   div[class*='col-'] {
