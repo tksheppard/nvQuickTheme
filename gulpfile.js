@@ -58,8 +58,8 @@ const paths = {
     src: './src/scss/**/*.scss',
     dest: './dist/css/'
   },
-  themescheme: {
-    src: './src/scss/themes/_themes.scss',
+  specsscheme: {
+    src: './src/scss/specs/_specs.scss',
     dest: './dist/css/'
   },
   colorscheme: {
@@ -358,7 +358,7 @@ function packageThemes(done) {
     const csFonts = schemes.fonts;
     return gulp.series(
       (csChangeCss) => {    
-        return gulp.src(paths.themescheme.src, {base: "./"})
+        return gulp.src(paths.specsscheme.src, {base: "./"})
           .pipe(replace(/\@import \'(.*?)(?=\'\;)/, '@import \''+csName))
           .pipe(notify({message: csName + ' css imported!', title : 'theme', sound: false}))
           .pipe(gulp.dest("./"));
