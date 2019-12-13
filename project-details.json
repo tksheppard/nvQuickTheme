@@ -5,5 +5,12 @@
 	"company": "nvisionative",
 	"url": "www.nvquicktheme.com",
     "email": "support@nvisionative.com",
-    "description": "A DNN Theme Dev Framework"
+	"description": "A DNN Theme Dev Framework",
+	"schemes": [
+		{
+			"name": "default",
+			"colors": "cs-default",
+			"fonts": "fs-default"
+		}
+	]
 }

@@ -1,6 +1,6 @@
 .bannerpane {
-  background:$secondary-color;
-  background:linear-gradient(135deg, darken($secondary-color, 20%) 0%, $secondary-color 50%, lighten($secondary-color, 20%) 100%);
+  background:$main-accent;
+  background:linear-gradient(135deg, darken($main-accent, 20%) 0%, $main-accent 50%, lighten($main-accent, 20%) 100%);
   color:white;
   
   div[class*='col-'] {

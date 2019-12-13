@@ -1,0 +1,42 @@
+/* Bootstrap Overrides */
+
+// Bootstrap colors (unused in nvquicktheme)
+$primary:#007bff;
+$secondary:#6c757d;
+$success:#28a745;
+$info:#17a2b8;
+$warning:#ffc107;
+$danger:#dc3545;
+$light:#f8f9fa;
+$dark:#343a40;
+
+// Grid breakpoints (changed to relative units to fix cross-platform inconsistencies)
+$grid-breakpoints: (
+  xs: 0,
+  sm: 36rem,
+  md: 48rem,
+  lg: 62rem,
+  xl: 75rem
+);
+
+// Grid containers (changed to relative units to fix cross-platform inconsistencies)
+$container-max-widths: (
+  sm: 33.75rem,
+  md: 45rem,
+  lg: 60rem,
+  xl: 71.25rem
+);
+
+// Override Bootstrap spacers for more options
+$spacer:1rem;
+$spacers: (
+    0: 0,
+    1: $spacer,
+    2: ($spacer * 2),
+    3: ($spacer * 3),
+    4: ($spacer * 4),
+    5: ($spacer * 5),
+    6: ($spacer * 6),
+    7: ($spacer * 7),
+    8: ($spacer * 8)
+);

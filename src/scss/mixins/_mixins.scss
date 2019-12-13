@@ -1,37 +1,56 @@
+// Strips units from numbers
 @function strip-unit($num) {
   @return $num / ($num * 0 + 1);
 }
 
-// rem font-size with px fallback
-// usage: @include font-size(16)
-@mixin font-size($sizeValue) {
-  font-size: $sizeValue + px;
-  font-size: ($sizeValue / 16) + rem;
+// Uses one font-size declaration to create REM with PX fallback
+@mixin font-size($font-size) {
+  font-size: $font-size + px;
+  font-size: ($font-size / $base-font-size) + rem;
 }
 
-// vertical rhythm
-// usage: @include font-baseline(16,24);
-@mixin font-baseline($font-size, $lineheight){
-	font-size: $font-size + px;
-	font-size: ($font-size / $base-font-size ) + rem;
-	line-height: ( $lineheight / $font-size / 1 );
-  margin: 0 0 ( ($lineheight / $font-size * ( 1 / ( $lineheight / $defaultlineheight))) * .5em ) 0; 
+// Uses font semantics for weights
+@mixin font-weight($weight) {
+  font-weight:map-get($weights, $weight);
 }
 
-@mixin background-cover(){
-	background-repeat: no-repeat;
-	background-position: center center;
-  background-size: cover;
+// Uses normal tracking as letter-spacing
+@mixin letter-spacing($tracking){
+  letter-spacing: ($tracking / 1000) * 1rem; 
 }
 
+// Vertical rhythm
+@mixin font-baseline($font-size, $line-height){
+	@include font-size($font-size);
+	line-height: $line-height / $base-font-size + rem;
+  margin-top: $base-line-height + rem; 
+}
+
+// Used to set attributes below a specified breakpoint
 @mixin mq-max-width( $width-in-px ) {
-  @media only screen and (max-width: ($width-in-px / $base-font-size) * 1em ) {
+  $width: strip-unit( $width-in-px );
+  @media only screen and (max-width: ($width / $base-font-size) * 1em ) {
     @content;
   }
 }
 
+// Used to set attributes above a specified breakpoint
 @mixin mq-min-width( $width-in-px ) {
-  @media only screen and (min-width: ($width-in-px / $base-font-size) * 1em ) {
+  $width: strip-unit( $width-in-px );
+  @media only screen and (min-width: ($width / $base-font-size) * 1em ) {
     @content;
+  }
+}
+
+// Reverse outline to solid buttons
+@mixin button-reverse-outline-variant($color, $color-hover: color-yiq($color), $active-background: $color, $active-border: $color) {
+  color: white;
+  background-color: $color;
+  background-image: none;
+  border-color: $color;
+  &:hover, &:focus {
+    color: $color-hover;
+    background-color: transparent;
+    border-color: $active-border;
   }
 }

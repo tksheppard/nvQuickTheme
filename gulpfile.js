@@ -1,4 +1,5 @@
-var bs            = require('browser-sync').create(),
+const 
+    bs            = require('browser-sync').create(),
     gulp          = require('gulp'),
     autoprefixer  = require('gulp-autoprefixer'),
     jshint        = require('gulp-jshint'),
@@ -19,8 +20,9 @@ var bs            = require('browser-sync').create(),
     url           = details.url,
     email         = details.email,
     description   = details.description;
+    schemes       = details.schemes;
     
-var paths = {
+const paths = {
   projectdetails: {
     src: './project-details.json'
   },
@@ -56,6 +58,18 @@ var paths = {
     src: './src/scss/**/*.scss',
     dest: './dist/css/'
   },
+  specsscheme: {
+    src: './src/scss/specs/_specs.scss',
+    dest: './dist/css/'
+  },
+  colorscheme: {
+    src: './src/scss/variables/_colors.scss',
+    dest: './dist/css/'
+  },
+  fontscheme: {
+    src: './src/scss/variables/_type.scss',
+    dest: './dist/css/'
+  },
   scripts: {
     src: './src/js/*.js',
     dest: './dist/js/'
@@ -85,7 +99,7 @@ var paths = {
   },
   zippackage: {
     src: ['./temp/*.zip','*.{dnn,png,jpg,txt}', 'LICENSE'],
-    zipfile: project+'\_'+version+'\_install.zip',
+    zipfile: project+'\_'+version+'\_',
     dest: './build/'
   },
   cleanup: {
@@ -266,20 +280,22 @@ function zipcontainers() {
 function zipelse() {
   return gulp.src(paths.zipelse.src, {base: '.'})
     .pipe(gulp.dest(paths.zipelse.dest))
-    .pipe(notify({message: '<%= file.relative %> temporarily created!', title : 'zipcontainers', sound: false}))
+    .pipe(notify({message: '<%= file.relative %> temporarily created!', title : 'zipelse', sound: false}))
     .pipe(replace('dist/', ''))
     .pipe(zip(paths.zipelse.zipfile))
     .pipe(gulp.dest(paths.zipelse.dest))
-    .pipe(notify({message: '<%= file.relative %> temporarily created!', title : 'zipcontainers', sound: false}));
+    .pipe(notify({message: '<%= file.relative %> temporarily created!', title : 'zipelse', sound: false}));
 }
 
 // git ziptemp
-var ziptemp = gulp.series(zipdist, zipcontainers, zipelse);
+function ziptemp(done) {
+  gulp.series(zipdist, zipcontainers, zipelse)(done);
+}
 
 // Assemble files into DNN theme install package
 function zippackage() { 
   return gulp.src(paths.zippackage.src)
-    .pipe(zip(paths.zippackage.zipfile))
+    .pipe(zip(paths.zippackage.zipfile+'install.zip'))
     .pipe(gulp.dest(paths.zippackage.dest))
     .pipe(notify({message: '<%= file.relative %> created!', title : 'zippackage', sound: false}));
 }
@@ -318,13 +334,87 @@ function watch() {
 }
 
 // gulp init
-var init = gulp.series(fontsInit, faFontsInit, faCssInit, slimMenuInit, normalizeInit, bsJsInit);
+function init(done) {
+  gulp.series(fontsInit, faFontsInit, faCssInit, slimMenuInit, normalizeInit, bsJsInit)(done);
+}
+
 
 // gulp build
-var build = gulp.series(init, styles, scripts, images, containers, manifest);
+function build(done) {
+  gulp.series(init, styles, scripts, images, containers, manifest)(done);
+}
+
 
 // gulp package
-var package = gulp.series(build, ziptemp, zippackage, cleanup);
+function package(done) {
+  return gulp.series(build, ziptemp, zippackage, cleanup)(done);
+}
+
+// gulp packageThemes iterates through schemes in project-details.json
+function packageThemes(done) {
+  const tasks = schemes.map(schemes => {   
+    const csName = schemes.name;
+    const csCol = schemes.colors;
+    const csFonts = schemes.fonts;
+    return gulp.series(
+      (csChangeCss) => {    
+        return gulp.src(paths.specsscheme.src, {base: "./"})
+          .pipe(replace(/\@import \'(.*?)(?=\'\;)/, '@import \''+csName))
+          .pipe(notify({message: csName + ' css imported!', title : 'theme', sound: false}))
+          .pipe(gulp.dest("./"));
+          csChangeCss();
+      },
+      (csChangeCol) => {    
+        return gulp.src(paths.colorscheme.src, {base: "./"})
+          .pipe(replace(/\$cs-current\: (.*?)(?=\;)/, '$cs-current: $'+csCol))
+          .pipe(notify({message: csName + ' colors imported!', title : 'theme', sound: false}))
+          .pipe(gulp.dest("./"));
+          csChangeCol();
+      },
+      (csChangeFont) => {    
+        return gulp.src(paths.fontscheme.src, {base: "./"})
+          .pipe(replace(/\$fs-current\: (.*?)(?=\;)/, '$fs-current: $'+csFonts))
+          .pipe(notify({message: csName + ' fonts imported!', title : 'theme', sound: false}))
+          .pipe(gulp.dest("./"));
+          csChangeFont();
+      },
+      (csPackage) => {
+        return gulp.series(
+          (csBuild) => {
+            return gulp.series(init, styles, scripts, images, containers, manifest,
+              (cbManifest) => {
+                return gulp.src(paths.manifest.src)
+                  .pipe(replace(/\<package name\=\"(.*?)(?=\")/, '<package name="'+company+'.'+project+'.'+csName))
+                  .pipe(replace(/\<friendlyName\>(.*?)(?=\<)/, '<friendlyName>'+project+'-'+csName))
+                  .pipe(replace(/\<skinName\>(.*?)(?=\<)/, '<skinName>'+project+'-'+csName))
+                  .pipe(replace(/(\\Skins\\)(.*?)(?=\\)/g, '\\Skins\\'+project+'-'+csName))
+                  .pipe(replace(/(\\Containers\\)(.*?)(?=\\)/g, '\\Containers\\'+project+'-'+csName))
+                  .pipe(gulp.dest(paths.manifest.dest))
+                  .pipe(notify({message: '<%= file.relative %> updated with color info!', title : 'manifest', sound: false}));
+                  cbManifest();
+              })(csBuild);
+          }, 
+          ziptemp,
+          (csZippackage) => {
+            return gulp.src(paths.zippackage.src)
+            .pipe(zip(paths.zippackage.zipfile+csName+'\_'+'install.zip'))
+            .pipe(gulp.dest(paths.zippackage.dest))
+            .pipe(notify({message: '<%= file.relative %> created!', title : 'csZippackage', sound: false}));
+            csZippackage();
+          }, 
+          cleanup)
+          (csPackage);
+      }, 
+      (taskDone) => {
+        taskDone();
+      }
+    )
+  });
+  return gulp.series(...tasks, (seriesDone) => {
+    seriesDone();
+    done();
+  })();
+}
 /*------------------------------------------------------*/
 /* END DEV TASKS ---------------------------------------*/
 /*------------------------------------------------------*/
@@ -357,6 +447,7 @@ exports.watch = watch;
 exports.init = init;
 exports.build = build;
 exports.package = package;
+exports.packageThemes = packageThemes;
 
 // Define default task that can be called by just running `gulp` from cli
 exports.default = build;

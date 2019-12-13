@@ -17,7 +17,7 @@ Refer to the [yarn installation page](https://yarnpkg.com/en/docs/install) for d
 ***
 
 ### Install Gulp
-Gulp is our task script manager and executor. In order for us to run this on command line in any project we're doing, from the node command line, you will need to run: `npm install gulp -g`. This will install Gulp globally on your machine. Note that if you run several installations of nvQuickTheme, you will only need to run this command on the first install.
+Gulp is our task script manager and executor. In order for us to run this on command line in any project we're doing, from the node command line, you will need to run: `yarn global add gulp`. This will install Gulp globally on your machine. Note that if you run several installations of nvQuickTheme, you will only need to run this command on the first install.
 
 ***
 
