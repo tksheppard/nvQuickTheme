@@ -5,13 +5,8 @@ import {
   copyBootstrapJs,
   processImages,
   copyContainers,
-  updateManifest,
 } from './utils.js';
 
-/**
- * Vite plugin that runs DNN-specific post-build tasks after the bundle is
- * written to disk (i.e. after `closeBundle` fires).
- */
 export function postBuild(): Plugin {
   return {
     name: 'dnn-post-build',
@@ -25,7 +20,6 @@ export function postBuild(): Plugin {
         copyBootstrapJs();
         processImages();
         copyContainers();
-        updateManifest();
 
         console.log('\n✅ Post-build tasks complete!\n');
       } catch (error) {
