@@ -10,6 +10,7 @@ import {
 } from 'fs';
 import { globSync } from 'glob';
 import archiver from 'archiver';
+import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 
 // ============================================================================
 // TYPES
@@ -23,6 +24,50 @@ interface ProjectDetails {
   url: string;
   email: string;
   description: string;
+}
+
+// ============================================================================
+// MANIFEST XML SHAPE
+// ============================================================================
+
+interface DnnManifestOwner {
+  name: string;
+  organization: string;
+  url: string;
+  email: string;
+}
+
+interface DnnManifestComponent {
+  '@_type': string;
+  skinFiles?: {
+    basePath?: string;
+    skinName?: string;
+  };
+  resourceFiles?: {
+    basePath?: string;
+    resourceFile?: {
+      name?: string;
+    };
+  };
+}
+
+interface DnnManifestPackage {
+  '@_name': string;
+  '@_version': string;
+  friendlyName: string;
+  description: string;
+  owner: DnnManifestOwner;
+  components: {
+    component: DnnManifestComponent[];
+  };
+}
+
+interface DnnManifestDoc {
+  dotnetnuke: {
+    packages: {
+      package: DnnManifestPackage;
+    };
+  };
 }
 
 // ============================================================================
@@ -140,28 +185,82 @@ export function copyContainers(): void {
   console.log(`${containers.length} container files copied!`);
 }
 
-/** Generate manifest.dnn by replacing placeholders in the template file. */
-export function updateManifest(): void {
-  const template = readFileSync('./manifest.template.dnn', 'utf-8');
+/**
+ * Generate manifest.dnn by parsing build-resources/manifest.template.dnn as
+ * XML (via fast-xml-parser), filling in project metadata directly on the
+ * parsed object, and re-serializing it. Writes into the packaging staging
+ * directory (temp/) rather than the project root, since the generated
+ * manifest is only ever needed inside the final install zip and shouldn't
+ * persist anywhere afterward.
+ *
+ * @param outputDir - Staging directory to write manifest.dnn into (e.g. './temp')
+ */
+export function updateManifest(outputDir: string): void {
+  const templateXml = readFileSync('./build-resources/manifest.template.dnn', 'utf-8');
 
-  const replacements: Record<string, string> = {
-    PACKAGE_NAME: `${company}.${project}`,
-    VERSION: version,
-    PROJECT: project,
-    DESCRIPTION: description,
-    AUTHOR: author,
-    COMPANY: company,
-    URL: url,
-    EMAIL: email,
-  };
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    trimValues: true,
+  });
 
-  let output = template;
-  for (const [key, value] of Object.entries(replacements)) {
-    const regex = new RegExp(`{{${key}}}`, 'g');
-    output = output.replace(regex, value);
+  const doc = parser.parse(templateXml) as DnnManifestDoc;
+  const pkg = doc.dotnetnuke.packages.package;
+
+  // Package identity
+  pkg['@_name'] = `${company}.${project}`;
+  pkg['@_version'] = version;
+  // No dedicated "friendlyName" field exists in project-details.json yet,
+  // so this falls back to the project slug (e.g. "nvQuickTheme"). Add a
+  // `friendlyName` key to project-details.json and read it here if you
+  // want a nicer display name distinct from the folder/skin name.
+  pkg.friendlyName = project;
+  pkg.description = description;
+
+  // Owner
+  pkg.owner.name = author;
+  pkg.owner.organization = company;
+  pkg.owner.url = url;
+  pkg.owner.email = email;
+
+  // Every component (the Skin itself, plus the zipped resource bundles
+  // that aren't Containers) installs into the same skin folder.
+  const skinBasePath = `Portals\\_default\\Skins\\${project}\\`;
+
+  for (const component of pkg.components.component) {
+    if (component['@_type'] === 'Skin' && component.skinFiles) {
+      // Each <skinFile>'s path+name is resolved relative to this
+      // basePath, so it must point at the skin's own folder — leaving
+      // it blank means those files (default.png, thumbnail_default.png)
+      // have nowhere to install to.
+      component.skinFiles.basePath = skinBasePath;
+      component.skinFiles.skinName = project;
+    } else if (component['@_type'] === 'ResourceFile' && component.resourceFiles) {
+      const resourceName = component.resourceFiles.resourceFile?.name;
+      if (resourceName === 'else.zip' || resourceName === 'dist.zip') {
+        // Previously blank, which would install these into the portal
+        // root instead of the skin's own folder.
+        component.resourceFiles.basePath = skinBasePath;
+      }
+      // cont.zip already has a hardcoded Containers basePath in the
+      // template — leave it as-is.
+    }
   }
 
-  writeFileSync('./manifest.dnn', output);
+  const builder = new XMLBuilder({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    format: true,
+    indentBy: '  ',
+    suppressEmptyNode: false,
+  });
+
+  const outputXml = builder.build(doc) as string;
+
+  if (!existsSync(outputDir)) {
+    mkdirSync(outputDir, { recursive: true });
+  }
+  writeFileSync(`${outputDir}/manifest.dnn`, outputXml);
   console.log('DNN manifest generated from template!');
 }
 
@@ -258,6 +357,10 @@ export function createPackage(): Promise<void> {
     mkdirSync(buildDir, { recursive: true });
   }
 
+  // Generate the manifest straight into the staging directory — it's only
+  // ever needed inside the install zip, so it never touches the project root.
+  updateManifest(tempDir);
+
   return Promise.all([
     createZip('./dist/**/*', `${tempDir}/dist.zip`),
     createZip('./containers/**/*', `${tempDir}/cont.zip`),
@@ -265,7 +368,8 @@ export function createPackage(): Promise<void> {
   ])
     .then(() => {
       const files = globSync('./temp/*.zip').concat(
-        globSync('./*.{dnn,png,jpg,txt}')
+        [`${tempDir}/manifest.dnn`],
+        globSync('./*.{png,jpg,txt}')
       );
       return createZip(files, `${buildDir}/${project}_${version}_install.zip`);
     })
