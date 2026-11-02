@@ -12,9 +12,9 @@
     "build":     "npm run typecheck && npm run lint && tsx scripts/build.ts",
     "clean":     "tsx scripts/clean.ts",
     "package":   "npm run typecheck && npm run lint && tsx scripts/package.ts",
-    "typecheck": "tsc --noEmit",
-    "lint":      "eslint \"scripts/**/*.ts\" \"*.ts\"",
-    "lint:fix":  "eslint \"scripts/**/*.ts\" \"*.ts\" --fix"
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/js/tsconfig.json",
+    "lint":      "eslint \"scripts/**/*.ts\" \"src/js/**/*.ts\" \"*.ts\"",
+    "lint:fix":  "eslint \"scripts/**/*.ts\" \"src/js/**/*.ts\" \"*.ts\" --fix"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.0.1",

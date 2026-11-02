@@ -8,9 +8,23 @@ import {
   createWriteStream,
   rmSync,
 } from 'fs';
-import { globSync } from 'glob';
+import { basename, dirname, join, relative } from 'path';
+import { globSync as nativeGlobSync } from 'glob';
 import archiver from 'archiver';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+
+// ============================================================================
+// GLOB WRAPPER
+// ============================================================================
+
+/**
+ * glob() returns native separators by default, i.e. backslashes on Windows.
+ * Forcing posix-style paths keeps every path operation in this file
+ * (basename, split, replace) behaving the same on Windows and Unix.
+ */
+function globSync(pattern: string): string[] {
+  return nativeGlobSync(pattern, { posix: true });
+}
 
 // ============================================================================
 // TYPES
@@ -93,8 +107,7 @@ export function copyFonts(): void {
 
   const fonts = globSync('./src/fonts/*');
   fonts.forEach((file) => {
-    const fileName = file.split('/').pop()!;
-    cpSync(file, `${fontsDir}/${fileName}`);
+    cpSync(file, `${fontsDir}/${basename(file)}`);
   });
   console.log(`${fonts.length} font files copied!`);
 }
@@ -110,8 +123,7 @@ export function copyFontAwesome(): void {
     './node_modules/@fortawesome/fontawesome-free/webfonts/{fa-brands-400.*,fa-solid-900.*,fa-regular-400.*}'
   );
   faFonts.forEach((file) => {
-    const fileName = file.split('/').pop()!;
-    cpSync(file, `${webfontsDir}/${fileName}`);
+    cpSync(file, `${webfontsDir}/${basename(file)}`);
   });
   console.log(`${faFonts.length} FontAwesome font files copied!`);
 
@@ -126,8 +138,7 @@ export function copyFontAwesome(): void {
 
   faCss.forEach((file) => {
     if (existsSync(file)) {
-      const fileName = file.split('/').pop()!;
-      cpSync(file, `${cssDir}/${fileName}`);
+      cpSync(file, `${cssDir}/${basename(file)}`);
     }
   });
   console.log('FontAwesome CSS files copied!');
@@ -142,13 +153,12 @@ export function copyBootstrapJs(): void {
 
   const bsFiles = globSync('./node_modules/bootstrap/dist/js/bootstrap.bundle.min.*');
   bsFiles.forEach((file) => {
-    const fileName = file.split('/').pop()!;
-    cpSync(file, `${jsDir}/${fileName}`);
+    cpSync(file, `${jsDir}/${basename(file)}`);
   });
   console.log(`${bsFiles.length} Bootstrap JS files copied!`);
 }
 
-/** Copy and flatten images from src/images into dist/images, preserving subdirectories. */
+/** Copy images from src/images into dist/images, preserving subdirectories. */
 export function processImages(): void {
   const imagesDir = './dist/images';
   if (!existsSync(imagesDir)) {
@@ -157,9 +167,10 @@ export function processImages(): void {
 
   const images = globSync('./src/images/**/*.{jpg,jpeg,png,gif,svg,webp}');
   images.forEach((file) => {
-    const relativePath = file.replace('./src/images/', '');
-    const destPath = `${imagesDir}/${relativePath}`;
-    const destDir = destPath.substring(0, destPath.lastIndexOf('/'));
+    // glob() results carry no leading "./", so compute the path relative to
+    // the images root instead of string-replacing a prefix.
+    const destPath = join(imagesDir, relative('./src/images', file));
+    const destDir = dirname(destPath);
 
     if (!existsSync(destDir)) {
       mkdirSync(destDir, { recursive: true });
@@ -179,8 +190,7 @@ export function copyContainers(): void {
 
   const containers = globSync('./containers/*');
   containers.forEach((file) => {
-    const fileName = file.split('/').pop()!;
-    cpSync(file, `${containersDir}/${fileName}`);
+    cpSync(file, `${containersDir}/${basename(file)}`);
   });
   console.log(`${containers.length} container files copied!`);
 }
@@ -295,8 +305,7 @@ function createZip(src: ZipSource, dest: string): Promise<void> {
       });
     } else {
       src.forEach((file) => {
-        const fileName = file.replace(/^.*[/\\]/, '');
-        archive.file(file, { name: fileName });
+        archive.file(file, { name: basename(file) });
       });
     }
 
@@ -316,8 +325,7 @@ function copyElseFiles(): Promise<void> {
     if (!existsSync(file)) return;
 
     const stats = statSync(file);
-    const fileName = file.split('/').pop()!;
-    const destPath = `${tempDir}/${fileName}`;
+    const destPath = `${tempDir}/${basename(file)}`;
 
     if (stats.isDirectory()) {
       cpSync(file, destPath, { recursive: true });
@@ -329,8 +337,7 @@ function copyElseFiles(): Promise<void> {
   return createZip(`${tempDir}/*`, `${tempDir}/else.zip`).then(() => {
     // Remove individual files; keep only the zip
     files.forEach((file) => {
-      const fileName = file.split('/').pop()!;
-      const tempFile = `${tempDir}/${fileName}`;
+      const tempFile = `${tempDir}/${basename(file)}`;
       if (existsSync(tempFile)) {
         rmSync(tempFile, { recursive: true });
       }

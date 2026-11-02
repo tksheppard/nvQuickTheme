@@ -24,9 +24,10 @@ export default defineConfig({
     emptyOutDir: true,
 
     rollupOptions: {
-      // Entry point(s) — change 'custom' to match your JS filename
+      // Entry point(s) — TypeScript sources in src/js.
+      // customMenu.ts is imported by custom.ts, so it is bundled into custom.min.js.
       input: {
-        custom: resolve(__dirname, 'src/js/custom.js'),
+        custom: resolve(__dirname, 'src/js/custom.ts'),
       },
 
       output: {
@@ -60,10 +61,14 @@ export default defineConfig({
   plugins: [
     // Runs TypeScript and ESLint checks on every rebuild.
     // Errors appear in the terminal and as a browser overlay during serve/watch.
+    // The checker handles one tsconfig, so it targets the theme's browser code
+    // (src/js). The build scripts are covered by `npm run typecheck`.
     checker({
-      typescript: true,
+      typescript: {
+        tsconfigPath: './src/js/tsconfig.json',
+      },
       eslint: {
-        lintCommand: 'eslint "scripts/**/*.ts" "*.ts"',
+        lintCommand: 'eslint "scripts/**/*.ts" "src/js/**/*.ts" "*.ts"',
         // Report ESLint errors as build errors (not just warnings)
         useFlatConfig: true,
       },
