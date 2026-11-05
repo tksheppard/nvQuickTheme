@@ -8,23 +8,10 @@ import {
   createWriteStream,
   rmSync,
 } from 'fs';
-import { basename, dirname, join, relative } from 'path';
-import { globSync as nativeGlobSync } from 'glob';
+import { globSync } from 'glob';
 import archiver from 'archiver';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
-
-// ============================================================================
-// GLOB WRAPPER
-// ============================================================================
-
-/**
- * glob() returns native separators by default, i.e. backslashes on Windows.
- * Forcing posix-style paths keeps every path operation in this file
- * (basename, split, replace) behaving the same on Windows and Unix.
- */
-function globSync(pattern: string): string[] {
-  return nativeGlobSync(pattern, { posix: true });
-}
+import { getFileName } from './helpers.js';
 
 // ============================================================================
 // TYPES
@@ -107,7 +94,8 @@ export function copyFonts(): void {
 
   const fonts = globSync('./src/fonts/*');
   fonts.forEach((file) => {
-    cpSync(file, `${fontsDir}/${basename(file)}`);
+    const fileName = getFileName(file);
+    cpSync(file, `${fontsDir}/${fileName}`);
   });
   console.log(`${fonts.length} font files copied!`);
 }
@@ -123,7 +111,8 @@ export function copyFontAwesome(): void {
     './node_modules/@fortawesome/fontawesome-free/webfonts/{fa-brands-400.*,fa-solid-900.*,fa-regular-400.*}'
   );
   faFonts.forEach((file) => {
-    cpSync(file, `${webfontsDir}/${basename(file)}`);
+    const fileName = getFileName(file);
+    cpSync(file, `${webfontsDir}/${fileName}`);
   });
   console.log(`${faFonts.length} FontAwesome font files copied!`);
 
@@ -138,7 +127,8 @@ export function copyFontAwesome(): void {
 
   faCss.forEach((file) => {
     if (existsSync(file)) {
-      cpSync(file, `${cssDir}/${basename(file)}`);
+      const fileName = getFileName(file);
+      cpSync(file, `${cssDir}/${fileName}`);
     }
   });
   console.log('FontAwesome CSS files copied!');
@@ -153,12 +143,13 @@ export function copyBootstrapJs(): void {
 
   const bsFiles = globSync('./node_modules/bootstrap/dist/js/bootstrap.bundle.min.*');
   bsFiles.forEach((file) => {
-    cpSync(file, `${jsDir}/${basename(file)}`);
+    const fileName = getFileName(file);
+    cpSync(file, `${jsDir}/${fileName}`);
   });
   console.log(`${bsFiles.length} Bootstrap JS files copied!`);
 }
 
-/** Copy images from src/images into dist/images, preserving subdirectories. */
+/** Copy and flatten images from src/images into dist/images, preserving subdirectories. */
 export function processImages(): void {
   const imagesDir = './dist/images';
   if (!existsSync(imagesDir)) {
@@ -167,10 +158,9 @@ export function processImages(): void {
 
   const images = globSync('./src/images/**/*.{jpg,jpeg,png,gif,svg,webp}');
   images.forEach((file) => {
-    // glob() results carry no leading "./", so compute the path relative to
-    // the images root instead of string-replacing a prefix.
-    const destPath = join(imagesDir, relative('./src/images', file));
-    const destDir = dirname(destPath);
+    const relativePath = file.replace('./src/images/', '');
+    const destPath = `${imagesDir}/${relativePath}`;
+    const destDir = destPath.substring(0, destPath.lastIndexOf('/'));
 
     if (!existsSync(destDir)) {
       mkdirSync(destDir, { recursive: true });
@@ -190,7 +180,8 @@ export function copyContainers(): void {
 
   const containers = globSync('./containers/*');
   containers.forEach((file) => {
-    cpSync(file, `${containersDir}/${basename(file)}`);
+    const fileName = file.split('/').pop()!;
+    cpSync(file, `${containersDir}/${fileName}`);
   });
   console.log(`${containers.length} container files copied!`);
 }
@@ -305,7 +296,8 @@ function createZip(src: ZipSource, dest: string): Promise<void> {
       });
     } else {
       src.forEach((file) => {
-        archive.file(file, { name: basename(file) });
+        const fileName = file.replace(/^.*[/\\]/, '');
+        archive.file(file, { name: fileName });
       });
     }
 
@@ -314,35 +306,116 @@ function createZip(src: ZipSource, dest: string): Promise<void> {
 }
 
 /**
- * Copy miscellaneous skin files (menus, partials, ascx, etc.) into a temp
- * directory, then zip them as else.zip.
+ * Zip the contents of ./dist at the zip root (css/, fonts/, images/, js/,
+ * webfonts/) with no "dist" folder wrapping them.
+ *
+ * @param dest - Output path for dist.zip
  */
-function copyElseFiles(): Promise<void> {
-  const tempDir = './temp';
-  const files = globSync('{./menus/**/*,./partials/*,*.{ascx,xml,html,htm},koi.json}');
+function createDistZip(dest: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const output = createWriteStream(dest);
+    const archive = archiver('zip', { zlib: { level: 9 } });
 
-  files.forEach((file) => {
-    if (!existsSync(file)) return;
+    output.on('close', resolve);
+    archive.on('error', reject);
 
-    const stats = statSync(file);
-    const destPath = `${tempDir}/${basename(file)}`;
+    archive.pipe(output);
+    archive.directory('./dist', false);
 
-    if (stats.isDirectory()) {
-      cpSync(file, destPath, { recursive: true });
-    } else {
-      cpSync(file, destPath);
-    }
+    void archive.finalize();
   });
+}
 
-  return createZip(`${tempDir}/*`, `${tempDir}/else.zip`).then(() => {
-    // Remove individual files; keep only the zip
-    files.forEach((file) => {
-      const tempFile = `${tempDir}/${basename(file)}`;
-      if (existsSync(tempFile)) {
-        rmSync(tempFile, { recursive: true });
+/**
+ * The install package has no "dist" folder, so the "dist/" prefix must be
+ * removed from the asset references in these two partials. Only the copies
+ * written into else.zip are changed; the source files are left alone.
+ */
+const DIST_REWRITE_FILES = ['_includes.ascx', '_includes-popUpSkin.ascx'];
+
+/** Remove "dist/" from asset references (e.g. "dist/css/a.css" → "css/a.css"). */
+function stripDistRefs(content: string): string {
+  return content.replace(/dist\//g, '');
+}
+
+/**
+ * Build else.zip straight from the project sources (no temp copy), keeping
+ * the folder structure DNN expects inside the skin folder:
+ *
+ *   else.zip
+ *   ├── menus/              (entire folder, recursive)
+ *   ├── partials/           (entire folder, recursive)
+ *   ├── *.ascx              (root skin files, e.g. default.ascx)
+ *   ├── koi.json
+ *   └── skin.doctype.xml
+ *
+ * @param dest - Output path for else.zip
+ */
+function createElseZip(dest: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const output = createWriteStream(dest);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', resolve);
+    archive.on('error', reject);
+
+    archive.pipe(output);
+
+    // Folders — preserved with their folder name and any subfolders
+    for (const folder of ['menus', 'partials']) {
+      if (existsSync(`./${folder}`)) {
+        // Skip the two partials that get rewritten below
+        archive.directory(`./${folder}`, folder, (entry) =>
+          folder === 'partials' && DIST_REWRITE_FILES.includes(entry.name) ? false : entry
+        );
+      } else {
+        console.warn(`⚠️ ./${folder} not found — it will be missing from else.zip`);
       }
+    }
+
+    // _includes.ascx and _includes-popUpSkin.ascx with "dist/" removed from references
+    for (const name of DIST_REWRITE_FILES) {
+      const file = `./partials/${name}`;
+      if (existsSync(file)) {
+        archive.append(stripDistRefs(readFileSync(file, 'utf-8')), { name: `partials/${name}` });
+      } else {
+        console.warn(`⚠️ ${file} not found — it will be missing from else.zip`);
+      }
+    }
+
+    // Root-level skin files
+    const rootFiles = [
+      ...globSync('*.ascx'),
+      ...['koi.json', 'skin.doctype.xml'].filter((f) => existsSync(f)),
+    ];
+    rootFiles.forEach((file) => {
+      archive.file(file, { name: file });
     });
+
+    for (const required of ['koi.json', 'skin.doctype.xml']) {
+      if (!existsSync(required)) {
+        console.warn(`⚠️ ${required} not found in project root — it will be missing from else.zip`);
+      }
+    }
+
+    void archive.finalize();
   });
+}
+
+/**
+ * Locate a root-level package file. Looks in the project root first, then in
+ * build-resources/ (next to manifest.template.dnn). Throws if it can't be
+ * found, because DNN refuses to install the package without these files.
+ */
+function requirePackageFile(fileName: string): string {
+  const candidates = [`./${fileName}`, `./build-resources/${fileName}`];
+  const found = candidates.find((p) => existsSync(p));
+  if (!found) {
+    throw new Error(
+      `Required package file "${fileName}" not found. Looked in: ${candidates.join(', ')}`
+    );
+  }
+  return found;
 }
 
 /**
@@ -354,6 +427,14 @@ export function createPackage(): Promise<void> {
 
   const tempDir = './temp';
   const buildDir = './build';
+
+  // Resolve required root files up front so we fail before doing any work.
+  const rootPackageFiles = [
+    'themeLicense.txt',
+    'themeReleaseNotes.txt',
+    'default.png',
+    'thumbnail_default.png',
+  ].map(requirePackageFile);
 
   if (existsSync(tempDir)) {
     rmSync(tempDir, { recursive: true });
@@ -369,15 +450,18 @@ export function createPackage(): Promise<void> {
   updateManifest(tempDir);
 
   return Promise.all([
-    createZip('./dist/**/*', `${tempDir}/dist.zip`),
+    createDistZip(`${tempDir}/dist.zip`),
     createZip('./containers/**/*', `${tempDir}/cont.zip`),
-    copyElseFiles(),
+    createElseZip(`${tempDir}/else.zip`),
   ])
     .then(() => {
-      const files = globSync('./temp/*.zip').concat(
-        [`${tempDir}/manifest.dnn`],
-        globSync('./*.{png,jpg,txt}')
-      );
+      const files = [
+        `${tempDir}/else.zip`,
+        `${tempDir}/dist.zip`,
+        `${tempDir}/cont.zip`,
+        `${tempDir}/manifest.dnn`,
+        ...rootPackageFiles,
+      ];
       return createZip(files, `${buildDir}/${project}_${version}_install.zip`);
     })
     .then(() => {
