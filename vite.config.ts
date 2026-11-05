@@ -8,6 +8,10 @@ import { postBuild } from './scripts/postbuild.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Set by scripts/serve.ts. During serve we skip the type/lint checker:
+// `npm run build` and `npm run package` already run typecheck + lint first.
+const isServe = process.env.THEME_SERVE === '1';
+
 /**
  * Vite Configuration for DNN Theme
  *
@@ -34,13 +38,24 @@ export default defineConfig({
         entryFileNames: 'js/[name].min.js',
         chunkFileNames: 'js/[name].min.js',
         assetFileNames: (assetInfo) => {
-          // assetInfo.names is available in Rollup 4 / Vite 5+
-          const name = assetInfo.names?.[0] ?? assetInfo.name;
+          const name = assetInfo.names?.[0] ?? assetInfo.name ?? '';
 
-          if (name?.endsWith('.css')) {
+          // The compiled stylesheet takes its name from the JS entry that
+          // imports it ("custom"), so rename it to style.min.css, which is
+          // what _includes.ascx references.
+          if (name === 'custom.css') {
+            return 'css/style.min.css';
+          }
+          if (name.endsWith('.css')) {
             return 'css/[name].min[extname]';
           }
-          return 'assets/[name][extname]';
+          if (/\.(woff2?|ttf|eot)$/.test(name)) {
+            return 'fonts/[name][extname]';
+          }
+          if (/\.(png|jpe?g|gif|svg|webp)$/.test(name)) {
+            return 'images/[name][extname]';
+          }
+          return '[name][extname]';
         },
       },
     },
@@ -68,7 +83,11 @@ export default defineConfig({
         tsconfigPath: './src/js/tsconfig.json',
       },
       eslint: {
-        lintCommand: 'eslint "scripts/**/*.ts" "src/js/**/*.ts" "*.ts"',
+        // During serve, only lint the theme's browser code. A full
+        // build/package still lints the build scripts too.
+        lintCommand: isServe
+          ? 'eslint "src/js/**/*.ts"'
+          : 'eslint "scripts/**/*.ts" "src/js/**/*.ts" "*.ts"',
         // Report ESLint errors as build errors (not just warnings)
         useFlatConfig: true,
       },

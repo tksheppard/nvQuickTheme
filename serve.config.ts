@@ -5,17 +5,17 @@ interface ServeConfig {
   port: number;
   /** Glob patterns Browser-Sync watches for browser reload. */
   watchPaths: string[];
-  /** Glob patterns chokidar watches to trigger a Vite rebuild. */
+  /** Directories or files chokidar watches to trigger a Vite rebuild (no globs: chokidar 4+ doesn't expand them). */
   sourcePaths: string[];
   /** Debounce delay in milliseconds before rebuilding after a file change. */
   debounce: number;
 }
 
 const config: ServeConfig = {
-  dnnUrl: 'http://mysite.loc',
+  dnnUrl: 'https://mysite.loc',
   port: 3000,
-  watchPaths: ['dist/**/*', 'containers/**/*', '*.ascx'],
-  sourcePaths: ['src/**/*'],
+  watchPaths: ['containers/**/*', '*.ascx'],
+  sourcePaths: ['src'],
   debounce: 300,
 };
 
